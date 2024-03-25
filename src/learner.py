@@ -12,7 +12,7 @@ from s5 import S5
 class Learner:
     def __init__(self, training_class):
         self.configs = training_class.configs
-        self.seed = 42
+        self.main_rng = random.PRNGKey(self.configs['jax_seed'])
         self.training_steps = self.configs['warmup_steps'] + self.configs['training_steps']
         if self.configs['architecture'] == 'Dense':
             self.architecture = DenseModel(self.configs['dense_params'])
@@ -29,24 +29,28 @@ class Learner:
 
     
     def show_parameters(self):
+        self.main_rng, init_rng, drop_rng = random.split(self.main_rng, num=3)
         if self.configs['architecture'] == 'CNN':
-            return print(self.architecture.tabulate(random.key(self.seed), np.ones((1, 24, 24, 1)), compute_flops=True, compute_vjp_flops=True))
+            return print(self.architecture.tabulate({"params": init_rng, "dropout": drop_rng}, np.ones((1, 24, 24, 1)),
+                                                    compute_flops=True, compute_vjp_flops=True))
         else:
-            return print(self.architecture.tabulate(random.key(self.seed), np.ones((1, 576, 1)), True, compute_flops=True, compute_vjp_flops=True))
+            training = True
+            return print(self.architecture.tabulate({"params": init_rng, "dropout": drop_rng}, np.ones((1, 100, 24, 24, 1)),
+                                                    training, vcompute_flops=True, compute_vjp_flops=True))
 
 
     def initialize_parameters(self):
+        self.main_rng, init_rng, drop_rng = random.split(self.main_rng, num=3)
         if self.configs['architecture'] == 'S5':
             training = True
-            # variables = self.architecture.init({"params": random.key(self.seed), "dropout": random.key(69)}, np.ones((1, 576, 1)), training)
-            variables = self.architecture.init({"params": random.key(self.seed), "dropout": random.key(69)}, np.ones((1, 100, 24, 24, 1)), training)
+            variables = self.architecture.init({"params": init_rng, "dropout": drop_rng}, np.ones((1, 100, 24, 24, 1)), training)
             params = variables["params"]
             if self.configs["s5_params"]["batchnorm"]:
                 batch_stats = variables['batch_stats']
                 return params, batch_stats
             return params
         else:
-            return self.architecture.init({"params": random.key(self.seed), "dropout": random.key(69)}, np.ones((1, 24, 24, 1)))['params']
+            return self.architecture.init({"params": init_rng, "dropout": drop_rng}, np.ones((1, 24, 24, 1)))['params']
 
 
     def create_train_state(self, learning_rate_fn):
@@ -116,7 +120,8 @@ class Learner:
             batchnorm = True
         else:
             batchnorm = False
-        self.train_state, loss, lr = train_batch_(self.train_state, batch_inputs, batch_labels, self.learning_rate_fn, steps, batchnorm, sequence_length)
+        self.main_rng, drop_rng = random.split(self.main_rng, num=2)
+        self.train_state, loss, lr = train_batch_(self.train_state, drop_rng, batch_inputs, batch_labels, self.learning_rate_fn, steps, batchnorm, sequence_length)
         return loss, lr
     
 
@@ -150,22 +155,22 @@ def mean_squared_error(mean, batch_labels):
     return loss
 
 
-@functools.partial(jax.jit, static_argnums=(3, 5))
-def train_batch_(state, batch_inputs, batch_labels, learning_rate_fn, step, batchnorm, mask):
+@functools.partial(jax.jit, static_argnums=(4, 6))
+def train_batch_(state, rng, batch_inputs, batch_labels, learning_rate_fn, step, batchnorm, mask):
     def loss_fn(params):
         training = True
         if batchnorm:
             (mean, var), updates = state.apply_fn(
                 {"params": params, "batch_stats": state.batch_stats},
                 batch_inputs, training,
-                rngs={"dropout": random.key(69)},
+                rngs={"dropout": rng},
                 mutable=["intermediates", "batch_stats"],
             )
         else:
             (mean, var), updates = state.apply_fn(
                 {"params": params},
                 batch_inputs, training,
-                rngs={"dropout": random.key(69)},
+                rngs={"dropout": rng},
                 mutable=["intermediates"],
             )
         mean_masked = mean * mask

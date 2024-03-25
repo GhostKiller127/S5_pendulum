@@ -4,8 +4,7 @@ optimizations:
 
 todo:
 S5
-    choose what is possible, make the possibilities callable
-    rng, do I need it?
+    rng done, test results
 learner
     saving & loading: model & optimizer state
     checkpointing

@@ -1,7 +1,8 @@
 configs = {
     "S5_pendulum": {
-        "run_name": 'S5,8,64,64,4,t[0-50:80]',
+        "run_name": 'S5,8,64,64,4,t[0-50:80],rng',
         "load_run": None,
+        "jax_seed": 69,
         "lr_finder": False,
         "warmup_steps": 1000,
         "training_steps": 9000,
