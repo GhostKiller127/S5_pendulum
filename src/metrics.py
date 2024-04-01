@@ -35,8 +35,10 @@ class Metrics:
     
     def add_val_loss(self, loss, step):
         for _ in range(11):
-            wandb.log({f"Val Loss x_{10*_}": loss[10*_,0]}, step=step)
-            wandb.log({f"Val Loss y_{10*_}": loss[10*_,1]}, step=step)
+            wandb.log({f"Val Loss x_{10*_+60}": loss[10*_,0]}, step=step)
+            wandb.log({f"Val Loss y_{10*_+60}": loss[10*_,1]}, step=step)
+            if _ == 4:
+                break
         wandb.log({"Val Loss": np.mean(loss)}, step=step)
         
 

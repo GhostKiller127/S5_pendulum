@@ -1,16 +1,7 @@
-optimizations:
-    executing training leads to HDD usage. why? and does S5 does the same? everything should be on the ram
-
-
 todo:
-S5
-    rng done, test results
 learner
     saving & loading: model & optimizer state
     checkpointing
-    prediction & deviation vs. mean & std (direct vs gauss)
-Crypto
-    binance vs bybit data
-    maybe pretraining with finetuning
-    causality check: evaluate and compare last timestep
-    compare prediction for different input lengths
+
+findings:
+validation sequence length shouldnt exceed training sequence length. if unavoidable, use prepadding to train on the same length. through prepadding the model gets conditioned to propagate through the whole length. dont know why that would help, since just zeros, but loss is somehow better. i think only needed if i use the whole history length, otherwise no padding and same val length.

@@ -7,12 +7,13 @@ class PendulumDataloader():
     def __init__(self, training_class):
         self.configs = training_class.configs
         self.train_obs, self.train_targets, self.val_obs, self.val_targets, self.test_obs, self.test_targets = self.load_data()
-        self.all_data = self.train_obs, self.train_targets, self.val_obs, self.val_targets, self.test_obs, self.test_targets
         self.train_data = self.train_obs, self.train_targets
         self.val_data = self.val_obs, self.val_targets
         self.test_data = self.test_obs, self.test_targets
         self.data_dict = {'train': self.train_data, 'val': self.val_data, 'test': self.test_data}
         self.data_sizes = {'train': 2000, 'val': 1000, 'test': 1000}
+        self.all_obs = np.vstack((self.train_obs, self.val_obs, self.test_obs))
+        self.all_targets = np.vstack((self.train_targets, self.val_targets, self.test_targets))
 
 
     def load_data(self):
@@ -21,14 +22,14 @@ class PendulumDataloader():
 
 
     def all_data_shape(self):
-        for data in self.all_data:
-            print(data.shape, data.dtype)
+        for data_type, data in self.data_dict.items():
+            print(f'{data_type}: "inputs": {data[0].shape}, {data[0].dtype}, "labels": {data[1].shape}, {data[1].dtype}')
     
 
     def batch_data(self, mode='train'):
         if mode == 'train':
             batch_size = self.configs['batch_size']
-            min = np.random.randint(0, 51)
+            min = np.random.randint(0, 41)
             # max = np.random.randint(min + 40, 81)
             max = 80
         elif mode == 'val':
@@ -45,8 +46,29 @@ class PendulumDataloader():
                 batch_inputs = np.array(np.pad(batch_inputs, ((0, 0), (80 - (max - min), 0), (0, 0), (0, 0), (0, 0)), mode='constant', constant_values=0))
                 batch_labels = np.array(np.pad(batch_labels, ((0, 0), (80 - (max - min), 0), (0, 0)), mode='constant', constant_values=0))
             mask = np.zeros_like(batch_labels)
-            mask[:, -(max - min):] = 1
+            mask[:, -(max-min):] = 1
             return batch_inputs, batch_labels, mask
+
+
+    def batch_crypto_data(self, mode='train'):
+        if mode == 'train':
+            batch_size = self.configs['batch_size']
+            min = np.random.randint(0, 41)
+            # max = np.random.randint(min + 40, 81)
+            # min = 0
+            max = min + 40
+        elif mode == 'val':
+            batch_size = 256
+            min, max = 60, 100
+        batch_indeces = np.random.choice(self.data_sizes[mode], size=batch_size, replace=False)
+        batch_inputs = self.all_obs[batch_indeces][:,min:max]
+        batch_labels = self.all_targets[batch_indeces][:,min:max]
+        if mode == 'train':
+            batch_inputs = np.array(np.pad(batch_inputs, ((0, 0), (40 - (max - min), 0), (0, 0), (0, 0), (0, 0)), mode='constant', constant_values=0))
+            batch_labels = np.array(np.pad(batch_labels, ((0, 0), (40 - (max - min), 0), (0, 0)), mode='constant', constant_values=0))
+        mask = np.zeros_like(batch_labels)
+        mask[:, -(max-min):] = 1
+        return batch_inputs, batch_labels, mask
 
 
     def show_multiple_data(self, data_list):

@@ -24,7 +24,7 @@ class S5():
             axis_name='batch')
         self.ssm_init_fn = self.get_ssm_init_fn()
         self.s5 = self.BatchGaussianRegressionModel(self.ssm_init_fn,
-                                                    d_output=2,
+                                                    d_output=self.configs['output_dim'],
                                                     d_model=self.configs['d_model'],
                                                     n_layers=self.configs['n_layers'],
                                                     padded=False,
@@ -32,7 +32,7 @@ class S5():
                                                     dropout=self.configs['dropout'],
                                                     prenorm=self.configs['prenorm'],
                                                     batchnorm=self.configs['batchnorm'],
-                                                    decoder_dim=self.configs['out_dim'],
+                                                    decoder_dim=self.configs['decoder_dim'],
                                                     encoder_fn=lambda d: CRN_CNN(d, input_shape=24)
                                                     )
 
